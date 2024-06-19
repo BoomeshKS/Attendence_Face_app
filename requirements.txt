@@ -2,3 +2,4 @@ opencv-contrib-python-headless
 streamlit
 numpy
 pandas
+streamlit_option_menu
