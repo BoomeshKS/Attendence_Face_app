@@ -3,5 +3,3 @@ streamlit
 numpy
 pandas
 streamlit_option_menu
-face_recognition
-cmake
