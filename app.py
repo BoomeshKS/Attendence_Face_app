@@ -6,6 +6,7 @@ import os
 from datetime import datetime
 import pandas as pd
 from streamlit_option_menu import option_menu
+import face_recognition
 
 # Function to detect faces using Haar cascades
 def detect_faces(frame, face_cascade):
