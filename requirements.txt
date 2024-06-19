@@ -3,3 +3,4 @@ streamlit
 numpy
 pandas
 streamlit_option_menu
+streamlit_webrtc
