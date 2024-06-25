@@ -277,9 +277,3 @@ elif selected == "Clear Data":
 
         st.success("All data cleared successfully.")
 
-
-
-
-
-
-
