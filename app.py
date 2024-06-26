@@ -178,8 +178,11 @@ video_placeholder = st.empty()
 face_cascade = cv2.CascadeClassifier(cv2.data.haarcascades + 'haarcascade_frontalface_default.xml')
 
 # Function to capture video and perform face detection
-def capture_video():
-    cap = cv2.VideoCapture(0)
+def capture_video(device_index=0):
+    cap = cv2.VideoCapture(device_index)
+    if not cap.isOpened():
+        st.error(f"Cannot open webcam with device index {device_index}")
+        return
     while cap.isOpened():
         ret, frame = cap.read()
         if not ret:
@@ -207,7 +210,10 @@ if 'stop' not in st.session_state:
 # Start capturing video when 'Run' button is clicked
 if run:
     st.session_state['stop'] = False
-    capture_video()
+    # Try different device indices
+    for device_index in range(3):
+        st.write(f"Trying to open webcam with device index {device_index}")
+        capture_video(device_index)
 
 # Stop capturing video when 'Stop' button is clicked
 if stop:
