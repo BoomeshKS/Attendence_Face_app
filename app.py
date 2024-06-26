@@ -1,279 +1,214 @@
+# import streamlit as st
+# import cv2
+# import pandas as pd
+# import datetime
+# import os
+# from PIL import Image
+# from streamlit_webrtc import webrtc_streamer, VideoProcessorBase, WebRtcMode
+# import face_recognition
+# import numpy as np
 
-import cv2
+# # File paths
+# attendance_file = "attendance/attendance_history.csv"
+# user_data_file = "users/user_data.csv"
+
+# # Create necessary directories
+# os.makedirs("attendance", exist_ok=True)
+# os.makedirs("users", exist_ok=True)
+
+# def load_data(file_path, columns):
+#     if os.path.exists(file_path):
+#         return pd.read_csv(file_path)
+#     else:
+#         return pd.DataFrame(columns=columns)
+
+# # Load attendance history and user data
+# st.session_state.attendance_history = load_data(attendance_file, ["Name", "Email", "Date", "Time"])
+# st.session_state.user_data = load_data(user_data_file, ["Name", "Email", "Image Path", "Date", "Time"])
+
+# if not os.path.exists("registered_faces"):
+#     os.makedirs("registered_faces")
+
+# def load_registered_faces():
+#     registered_faces = []
+#     for root, dirs, files in os.walk("registered_faces"):
+#         for file in files:
+#             if file.endswith(".jpg") or file.endswith(".png"):
+#                 img_path = os.path.join(root, file)
+#                 name = file.split("_")[0]
+#                 email = file.split("_")[1].split(".")[0]
+#                 registered_faces.append({"Name": name, "Email": email, "Image Path": img_path})
+#     return registered_faces
+
+# def save_data(file_path, data):
+#     data.to_csv(file_path, index=False)
+
+# def clear_all_data():
+#     if os.path.exists("attendance"):
+#         for file in os.listdir("attendance"):
+#             os.remove(os.path.join("attendance", file))
+#     if os.path.exists("users"):
+#         for file in os.listdir("users"):
+#             os.remove(os.path.join("users", file))
+#     if os.path.exists("registered_faces"):
+#         for file in os.listdir("registered_faces"):
+#             os.remove(os.path.join("registered_faces", file))
+#     st.session_state.attendance_history = pd.DataFrame(columns=["Name", "Email", "Date", "Time"])
+#     st.session_state.user_data = pd.DataFrame(columns=["Name", "Email", "Image Path", "Date", "Time"])
+
+# class FaceRecognitionProcessor(VideoProcessorBase):
+#     def __init__(self):
+#         self.registered_faces = load_registered_faces()
+#         self.known_face_encodings = []
+#         self.known_face_names = []
+#         for face in self.registered_faces:
+#             img = face_recognition.load_image_file(face["Image Path"])
+#             encoding = face_recognition.face_encodings(img)[0]
+#             self.known_face_encodings.append(encoding)
+#             self.known_face_names.append((face["Name"], face["Email"]))
+
+#     def recv(self, frame):
+#         img = frame.to_ndarray(format="bgr24")
+#         rgb_img = img[:, :, ::-1]  # Convert to RGB
+
+#         face_locations = face_recognition.face_locations(rgb_img)
+#         face_encodings = face_recognition.face_encodings(rgb_img, face_locations)
+
+#         print(f"Detected {len(face_locations)} faces")  # Debug print
+
+#         for (top, right, bottom, left), face_encoding in zip(face_locations, face_encodings):
+#             matches = face_recognition.compare_faces(self.known_face_encodings, face_encoding)
+#             name = "Unknown"
+#             email = ""
+#             if True in matches:
+#                 first_match_index = matches.index(True)
+#                 name, email = self.known_face_names[first_match_index]
+#                 if not ((st.session_state.attendance_history['Name'] == name) & 
+#                         (st.session_state.attendance_history['Email'] == email) & 
+#                         (st.session_state.attendance_history['Date'] == datetime.date.today().strftime('%Y-%m-%d'))).any():
+#                     now = datetime.datetime.now()
+#                     new_entry = pd.DataFrame([{"Name": name, "Email": email, "Date": now.date().strftime('%Y-%m-%d'), "Time": now.time().strftime('%H:%M:%S')}])
+#                     st.session_state.attendance_history = pd.concat([st.session_state.attendance_history, new_entry], ignore_index=True)
+#                     save_data(attendance_file, st.session_state.attendance_history)
+            
+#             print(f"Drawing box: ({left}, {top}), ({right}, {bottom})")  # Debug print
+
+#             # Draw the rectangle and text
+#             cv2.rectangle(img, (left, top), (right, bottom), (0, 255, 0), 2)  # Thicker rectangle
+#             cv2.putText(img, f"Name: {name}", (left, top - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255, 255, 255), 2)
+#             cv2.putText(img, f"Email: {email}", (left, bottom + 20), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255, 255, 255), 2)
+
+#         return frame.from_ndarray(img, format="bgr24")
+
+# st.sidebar.title("Face Attendance System")
+# menu = st.sidebar.selectbox("Menu", ["Face Attendance", "Register Face", "History", "Clear Data"])
+
+# if menu == "Face Attendance":
+#     st.header("Face Attendance")
+#     webrtc_streamer(
+#         key="attendance",
+#         mode=WebRtcMode.SENDRECV,
+#         video_processor_factory=FaceRecognitionProcessor,
+#         media_stream_constraints={
+#             "video": {
+#                 "width": {"ideal": 1920},  # Higher resolution width
+#                 "height": {"ideal": 1080},  # Higher resolution height
+#                 "frameRate": {"ideal": 60},  # Higher frame rate for smoother video
+#             },
+#             "audio": False,
+#         },
+#         async_processing=True,
+#     )
+
+
+# elif menu == "Register Face":
+#     st.header("Register Face")
+
+#     image_file = st.file_uploader("Upload Image", type=["jpg", "png"], key="register_image")
+#     if image_file is not None:
+#         img = Image.open(image_file)
+#         st.image(img, caption='Uploaded Image', use_column_width=True)
+#         name = st.text_input("Name", key="upload_name")
+#         email = st.text_input("Email", key="upload_email")
+#         if st.button("Save", key="upload_save"):
+#             img_path = os.path.join("registered_faces", f"{name}_{email}.jpg")
+#             img.save(img_path)
+#             now = datetime.datetime.now()
+#             new_user = pd.DataFrame([{"Name": name, "Email": email, "Image Path": img_path, "Date": now.date().strftime('%Y-%m-%d'), "Time": now.time().strftime('%H:%M:%S')}])
+#             st.session_state.user_data = pd.concat([st.session_state.user_data, new_user], ignore_index=True)
+#             save_data(user_data_file, st.session_state.user_data)
+#             st.success("Face Registered Successfully and Image Saved")
+
+# elif menu == "History":
+#     st.header("Attendance History")
+#     st.dataframe(st.session_state.attendance_history)
+
+#     st.header("Registered Users")
+#     if not st.session_state.user_data.empty:
+#         st.dataframe(st.session_state.user_data[["Name", "Email", "Date", "Time"]])
+#     else:
+#         st.write("No registered users found.")
+
+#     registered_faces = load_registered_faces()
+#     if registered_faces:
+#         registered_users_df = pd.DataFrame(registered_faces)
+#         st.dataframe(registered_users_df[["Name", "Email"]])
+#     else:
+#         st.write("No registered users found.")
+
+# elif menu == "Clear Data":
+#     st.header("Clear All Data")
+#     if st.button("Clear All Data", key="clear_data_button"):
+#         clear_all_data()
+#         st.success("All data has been cleared.")
+
+
 import streamlit as st
+import cv2
 import numpy as np
-import os
-from datetime import datetime
-import pandas as pd
-from streamlit_option_menu import option_menu
 
-# Function to detect faces using Haar cascades
-def detect_faces(frame, face_cascade):
-    gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
-    faces = face_cascade.detectMultiScale(gray, scaleFactor=1.1, minNeighbors=5, minSize=(30, 30))
-    return faces, gray
+st.title("Live Video Face Detection")
 
-# Function to load registered faces and their encodings
-def load_registered_faces():
-    registered_faces = []
-    labels = []
-    names = {}
-    label_id = 0
-    for filename in os.listdir('Registered_face'):
-        if filename.endswith(".jpg") or filename.endswith(".jpeg") or filename.endswith(".png"):
-            image_path = os.path.join('Registered_face', filename)
-            image = cv2.imread(image_path, cv2.IMREAD_GRAYSCALE)
-            if image is None:
-                continue
-            name = filename.split('_')[0]
-            registered_faces.append(image)
-            labels.append(label_id)
-            names[label_id] = name
-            label_id += 1
-    return registered_faces, labels, names
-
-# Function to train the face recognizer
-def train_recognizer(registered_faces, labels):
-    if len(registered_faces) == 0 or len(labels) == 0:
-        return None
-    recognizer = cv2.face.LBPHFaceRecognizer_create()
-    recognizer.train(registered_faces, np.array(labels))
-    return recognizer
-
-# Function to load attendance history
-def load_attendance_history(file_path):
-    if not os.path.exists(file_path) or os.path.getsize(file_path) == 0:
-        return pd.DataFrame(columns=["Name", "Email", "Timestamp"])
-    return pd.read_csv(file_path)
-
-# Function to save attendance history
-def save_attendance_history(file_path, history_df):
-    history_df.to_csv(file_path, index=False)
-
-# Ensure the "Registered_face" directory exists
-if not os.path.exists('Registered_face'):
-    os.makedirs('Registered_face')
+# Initialize variables
+run = st.button('Run')
+stop = st.button('Stop')
+video_placeholder = st.empty()
 
 # Load the pre-trained face detection model
 face_cascade = cv2.CascadeClassifier(cv2.data.haarcascades + 'haarcascade_frontalface_default.xml')
 
-# Load registered faces and train the recognizer
-registered_faces, labels, names = load_registered_faces()
-recognizer = train_recognizer(registered_faces, labels)
-
-# Load attendance history
-attendance_history_file = "attendance_history.csv"
-attendance_history = load_attendance_history(attendance_history_file)
-
-# Streamlit application
-st.title("Face Recognition System")
-
-# Create the menu options
-with st.sidebar:
-    selected = option_menu(
-        menu_title="Main Menu",
-        options=["Live Attendance", "Register Face", "Register Face Using Camera", "History", "Clear Data"],
-        icons=["camera-video", "person-plus", "camera", "clock-history", "trash"],
-        menu_icon="cast",
-        default_index=0,
-    )
-
-# Define the live attendance functionality
-if selected == "Live Attendance":
-    st.header("Live Attendance")
-
-    if recognizer is None:
-        st.error("No registered faces found. Please register at least one face before starting the recognizer.")
-    else:
-        start_button = st.button("Start", key="start_button")
-
-        if start_button:
-            cap = cv2.VideoCapture(0)
-            frame_placeholder = st.empty()
-            stop_button = st.button("Stop", key="stop_button")
-
-            while cap.isOpened() and not stop_button:
-                ret, frame = cap.read()
-                if not ret:
-                    st.error("Failed to capture video")
-                    break
-
-                faces, gray = detect_faces(frame, face_cascade)
-
-                for (x, y, w, h) in faces:
-                    roi_gray = gray[y:y+h, x:x+w]
-                    label_id, confidence = recognizer.predict(roi_gray)
-
-                    if confidence < 50:
-                        name = "Unknown"
-                        email = "new face"
-                        color = (255, 0, 0)  # Blue for new faces
-                    else:
-                        name = names[label_id]
-                        # Fetch email from the history.csv
-                        with open("history.csv", 'r') as file:
-                            lines = file.readlines()
-                            email = ""
-                            for line in lines:
-                                parts = line.strip().split(',')
-                                if parts[0] == name:
-                                    email = parts[1]
-                                    break
-                        color = (0, 0, 255)  # Red for recognized faces
-
-                        # Add entry to attendance history if not already present
-                        if not ((attendance_history["Name"] == name) & (attendance_history["Email"] == email)).any():
-                            timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-                            new_entry = pd.DataFrame([{"Name": name, "Email": email, "Timestamp": timestamp}])
-                            attendance_history = pd.concat([attendance_history, new_entry], ignore_index=True)
-                            save_attendance_history(attendance_history_file, attendance_history)
-
-                    display_text = f"{name}, {email}"
-                    
-                    # Draw rectangle around the face
-                    cv2.rectangle(frame, (x, y), (x+w, y+h), color, 2)
-                    # Draw label with name below the face
-                    cv2.rectangle(frame, (x, y + h + 10), (x + w, y + h + 40), color, cv2.FILLED)
-                    cv2.putText(frame, display_text, (x + 6, y + h + 30), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255, 255, 255), 1)
-
-                frame_placeholder.image(frame, channels="BGR")
-
-            cap.release()
-            frame_placeholder.empty()
-
-# Define the register face functionality
-elif selected == "Register Face":
-    st.header("Register Face")
-    uploaded_file = st.file_uploader("Choose an image...", type=["jpg", "jpeg", "png"], key="file_uploader")
-    if uploaded_file is not None:
-        image = np.array(bytearray(uploaded_file.read()), dtype=np.uint8)
-        image = cv2.imdecode(image, 1)
-        st.image(image, channels="BGR")
-        with st.form(key='upload_form'):
-            name = st.text_input("Name", key="upload_name")
-            email = st.text_input("Email", key="upload_email")
-            save_button = st.form_submit_button("Save")
-            if save_button and name and email:
-                timestamp = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
-                filename = f"Registered_face/{name}_{timestamp}.jpg"
-                try:
-                    cv2.imwrite(filename, image)
-                    with open("history.csv", "a") as f:
-                        f.write(f"{name},{email},{timestamp}\n")
-                    st.success(f"Image saved successfully as {filename}")
-                except Exception as e:
-                    st.error(f"Failed to save image: {e}")
-
-                # Refresh registered faces and retrain recognizer
-                registered_faces, labels, names = load_registered_faces()
-                recognizer = train_recognizer(registered_faces, labels)
-                st.experimental_rerun()
-
-# Define the register face using camera functionality
-elif selected == "Register Face Using Camera":
-    st.header("Register Face Using Camera")
-    if 'captured_image' not in st.session_state:
-        st.session_state.captured_image = None
-
+# Function to capture video and perform face detection
+def capture_video():
     cap = cv2.VideoCapture(0)
-    frame_placeholder = st.empty()
-    capture_button = st.button("Capture Image")
-
-    while cap.isOpened() and st.session_state.captured_image is None:
+    while cap.isOpened():
         ret, frame = cap.read()
         if not ret:
-            st.error("Failed to capture video")
-            cap.release()
+            break
+        # Convert to grayscale for face detection
+        gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
+        faces = face_cascade.detectMultiScale(gray, 1.1, 4)
+        # Draw green box around faces
+        for (x, y, w, h) in faces:
+            cv2.rectangle(frame, (x, y), (x + w, y + h), (0, 255, 0), 2)
+        # Display the resulting frame
+        video_placeholder.image(cv2.cvtColor(frame, cv2.COLOR_BGR2RGB))
+
+        # Check for stop button
+        if st.session_state.get('stop', False):
             break
 
-        faces, gray = detect_faces(frame, face_cascade)
-        frame_placeholder.image(frame, channels="BGR")
+    cap.release()
+    video_placeholder.empty()
 
-        if capture_button:
-            st.session_state.captured_image = frame.copy()
-            cap.release()
-            break
+# Initialize session state for stop button
+if 'stop' not in st.session_state:
+    st.session_state['stop'] = False
 
-    if st.session_state.captured_image is not None:
-        st.image(st.session_state.captured_image, channels="BGR")
-        with st.form(key='camera_form'):
-            name = st.text_input("Name", key="camera_name")
-            email = st.text_input("Email", key="camera_email")
-            save_button = st.form_submit_button("Save")
-            if save_button and name and email:
-                timestamp = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
-                filename = f"Registered_face/{name}_{timestamp}.jpg"
-                try:
-                    cv2.imwrite(filename, st.session_state.captured_image)
-                    with open("history.csv", "a") as f:
-                        f.write(f"{name},{email},{timestamp}\n")
-                    st.success(f"Image saved successfully as {filename}")
-                except Exception as e:
-                    st.error(f"Failed to save image: {e}")
+# Start capturing video when 'Run' button is clicked
+if run:
+    st.session_state['stop'] = False
+    capture_video()
 
-                # Refresh registered faces and retrain recognizer
-                registered_faces, labels, names = load_registered_faces()
-                recognizer = train_recognizer(registered_faces, labels)
-                st.session_state.captured_image = None
-                st.experimental_rerun()
-
-# Define the history functionality
-elif selected == "History":
-    # Function to load CSV data with validation
-    def load_csv(file_path):
-        try:
-            with open(file_path, 'r') as f:
-                lines = f.readlines()
-            valid_lines = []
-            for line in lines:
-                parts = line.strip().split(',')
-                if len(parts) == 3:  # Expecting Name, Email, Timestamp
-                    valid_lines.append(line.strip())
-                else:
-                    st.error(f"Invalid line in {file_path}: {line}")
-            if valid_lines:
-                data = pd.DataFrame([line.split(',') for line in valid_lines], columns=["Name", "Email", "Timestamp"])
-                return data, None
-            else:
-                return None, "No valid data found in the file."
-        except Exception as e:
-            return None, f"Error reading the file: {e}"
-
-    # Registered Face History Table
-    st.subheader("Registered Face History")
-    registered_face_history, error = load_csv("history.csv")
-    if registered_face_history is not None:
-        st.table(registered_face_history)
-    else:
-        st.info(error)
-
-    # Attendance History Table
-    st.subheader("Attendance History")
-    attendance_history, error = load_csv(attendance_history_file)
-    if attendance_history is not None:
-        st.table(attendance_history)
-    else:
-        st.info(error)
-
-# Define the clear data functionality
-elif selected == "Clear Data":
-    st.header("Clear Data")
-    clear_data_button = st.button("Clear All Data")
-
-    if clear_data_button:
-        # Clear images in Registered_face directory
-        for filename in os.listdir('Registered_face'):
-            file_path = os.path.join('Registered_face', filename)
-            if os.path.isfile(file_path):
-                os.remove(file_path)
-        
-        # Clear history.csv
-        with open("history.csv", 'w') as f:
-            f.write("")
-
-        # Clear attendance_history.csv
-        with open(attendance_history_file, 'w') as f:
-            f.write("")
-
-        st.success("All data cleared successfully.")
-
+# Stop capturing video when 'Stop' button is clicked
+if stop:
+    st.session_state['stop'] = True
