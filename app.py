@@ -179,21 +179,28 @@ class FaceDetectionProcessor(VideoProcessorBase):
         super().__init__()
 
     def recv(self, frame):
-        img = frame.to_ndarray(format="bgr24")
+        try:
+            img = frame.to_ndarray(format="bgr24")
 
-        gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
-        faces = face_cascade.detectMultiScale(gray, 1.1, 4)
-        for (x, y, w, h) in faces:
-            cv2.rectangle(img, (x, y), (x + w, y + h), (0, 255, 0), 2)
+            gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
+            faces = face_cascade.detectMultiScale(gray, 1.1, 4)
+            for (x, y, w, h) in faces:
+                cv2.rectangle(img, (x, y), (x + w, y + h), (0, 255, 0), 2)
 
-        return av.VideoFrame.from_ndarray(img, format="bgr24")
+            return av.VideoFrame.from_ndarray(img, format="bgr24")
+        except Exception as e:
+            st.error(f"Error processing frame: {e}")
+            return frame
 
-webrtc_ctx = webrtc_streamer(
-    key="face-detection",
-    video_processor_factory=FaceDetectionProcessor,
-    media_stream_constraints={"video": True, "audio": False},
-)
+try:
+    webrtc_ctx = webrtc_streamer(
+        key="face-detection",
+        video_processor_factory=FaceDetectionProcessor,
+        media_stream_constraints={"video": True, "audio": False},
+    )
 
-if webrtc_ctx.video_processor:
-    if st.button("Stop"):
-        webrtc_ctx.video_processor = None
+    if webrtc_ctx.video_processor:
+        if st.button("Stop"):
+            webrtc_ctx.video_processor = None
+except Exception as e:
+    st.error(f"Error setting up WebRTC: {e}")
