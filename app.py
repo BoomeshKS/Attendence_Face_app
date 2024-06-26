@@ -169,58 +169,56 @@ import cv2
 import face_recognition
 import numpy as np
 
-st.title("Live Camera Feed with Enhanced Face Detection")
+# Initialize variables
+video_stream = None
+running = False
 
-# Create a placeholder for the video
-video_placeholder = st.empty()
+# Define functions to start and stop the video
+def start_video():
+    global video_stream, running
+    if not running:
+        video_stream = cv2.VideoCapture(0)
+        running = True
 
-# Buttons to start and stop the video feed
+def stop_video():
+    global video_stream, running
+    if running:
+        running = False
+        video_stream.release()
+
+# Streamlit app layout
+st.title("Live Face Detection")
+
 start_button = st.button("Start Video")
 stop_button = st.button("Stop Video")
 
-if 'run' not in st.session_state:
-    st.session_state['run'] = False
-
 if start_button:
-    st.session_state['run'] = True
+    start_video()
+elif stop_button:
+    stop_video()
 
-if stop_button:
-    st.session_state['run'] = False
-
-def run_video():
-    # Start video capture
-    cap = cv2.VideoCapture(0)
-
-    if not cap.isOpened():
-        st.error("Error: Could not open video stream.")
-        return
-
-    while st.session_state['run']:
-        # Read frame from the camera
-        ret, frame = cap.read()
+if running:
+    stframe = st.empty()
+    while running:
+        ret, frame = video_stream.read()
         if not ret:
-            st.write("Failed to grab frame")
             break
 
-        # Convert the frame from BGR to RGB
-        rgb_frame = frame[:, :, ::-1]
+        # Detect faces
+        face_locations = face_recognition.face_locations(frame)
 
-        # Find all the faces in the current frame
-        face_locations = face_recognition.face_locations(rgb_frame, model="cnn")
-
-        # Draw boxes around the faces
-        for top, right, bottom, left in face_locations:
+        # Draw rectangles around the faces
+        for (top, right, bottom, left) in face_locations:
             cv2.rectangle(frame, (left, top), (right, bottom), (0, 255, 0), 2)
-            # Add label for face
-            cv2.putText(frame, "Face", (left, top - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.9, (0, 255, 0), 2)
 
-        # Display the frame with boxes around faces
-        video_placeholder.image(frame, channels="BGR")
+        # Display the frame with boxes
+        stframe.image(frame, channels="BGR")
 
-    # Release the video capture object
-    cap.release()
-
-if st.session_state['run']:
-    run_video()
-else:
+if not running:
     st.write("Video stopped")
+
+# Release resources if the app is stopped
+if st.sidebar.button("Exit"):
+    stop_video()
+    st.stop()
+
