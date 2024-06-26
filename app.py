@@ -164,43 +164,42 @@
 
 
 import streamlit as st
-from streamlit_webrtc import webrtc_streamer, VideoProcessorBase
-import av
 import cv2
 import numpy as np
 
-st.title("Live Video Face Detection")
+# Initialize the state
+if 'run' not in st.session_state:
+    st.session_state.run = False
 
-# Load the pre-trained face detection model
-face_cascade = cv2.CascadeClassifier(cv2.data.haarcascades + 'haarcascade_frontalface_default.xml')
+# Function to start/stop video
+def toggle_video():
+    st.session_state.run = not st.session_state.run
 
-class FaceDetectionProcessor(VideoProcessorBase):
-    def __init__(self):
-        super().__init__()
+st.title("Live Video Face/Object Detection")
+st.button("Run/Stop", on_click=toggle_video)
 
-    def recv(self, frame):
-        try:
-            img = frame.to_ndarray(format="bgr24")
+# Video capture
+cap = cv2.VideoCapture(0)
 
-            gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
-            faces = face_cascade.detectMultiScale(gray, 1.1, 4)
-            for (x, y, w, h) in faces:
-                cv2.rectangle(img, (x, y), (x + w, y + h), (0, 255, 0), 2)
+# Function to detect faces
+def detect_faces(frame):
+    gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
+    face_cascade = cv2.CascadeClassifier(cv2.data.haarcascades + 'haarcascade_frontalface_default.xml')
+    faces = face_cascade.detectMultiScale(gray, scaleFactor=1.1, minNeighbors=5, minSize=(30, 30))
+    for (x, y, w, h) in faces:
+        cv2.rectangle(frame, (x, y), (x+w, y+h), (255, 0, 0), 2)
+    return frame
 
-            return av.VideoFrame.from_ndarray(img, format="bgr24")
-        except Exception as e:
-            st.error(f"Error processing frame: {e}")
-            return frame
+# Stream video
+if st.session_state.run:
+    st.text("Video is running...")
+    stframe = st.empty()
+    while st.session_state.run:
+        ret, frame = cap.read()
+        if not ret:
+            st.text("Failed to capture video")
+            break
+        frame = detect_faces(frame)
+        stframe.image(frame, channels="BGR")
 
-try:
-    webrtc_ctx = webrtc_streamer(
-        key="face-detection",
-        video_processor_factory=FaceDetectionProcessor,
-        media_stream_constraints={"video": True, "audio": False},
-    )
-
-    if webrtc_ctx.video_processor:
-        if st.button("Stop"):
-            webrtc_ctx.video_processor = None
-except Exception as e:
-    st.error(f"Error setting up WebRTC: {e}")
+cap.release()
