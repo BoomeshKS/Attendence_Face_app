@@ -163,46 +163,64 @@
 #         st.success("All data has been cleared.")
 
 
+
 import streamlit as st
 import cv2
+import face_recognition
 import numpy as np
 
-# Initialize the state
+st.title("Live Camera Feed with Enhanced Face Detection")
+
+# Create a placeholder for the video
+video_placeholder = st.empty()
+
+# Buttons to start and stop the video feed
+start_button = st.button("Start Video")
+stop_button = st.button("Stop Video")
+
 if 'run' not in st.session_state:
-    st.session_state.run = False
+    st.session_state['run'] = False
 
-# Function to start/stop video
-def toggle_video():
-    st.session_state.run = not st.session_state.run
+if start_button:
+    st.session_state['run'] = True
 
-st.title("Live Video Face/Object Detection")
-st.button("Run/Stop", on_click=toggle_video)
+if stop_button:
+    st.session_state['run'] = False
 
-# Video capture
-cap = cv2.VideoCapture(0)
+def run_video():
+    # Start video capture
+    cap = cv2.VideoCapture(0)
 
-if not cap.isOpened():
-    st.error("Cannot open camera")
-else:
-    # Function to detect faces
-    def detect_faces(frame):
-        gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
-        face_cascade = cv2.CascadeClassifier(cv2.data.haarcascades + 'haarcascade_frontalface_default.xml')
-        faces = face_cascade.detectMultiScale(gray, scaleFactor=1.1, minNeighbors=5, minSize=(30, 30))
-        for (x, y, w, h) in faces:
-            cv2.rectangle(frame, (x, y), (x+w, y+h), (255, 0, 0), 2)
-        return frame
+    if not cap.isOpened():
+        st.error("Error: Could not open video stream.")
+        return
 
-    # Stream video
-    if st.session_state.run:
-        st.text("Video is running...")
-        stframe = st.empty()
-        while st.session_state.run:
-            ret, frame = cap.read()
-            if not ret:
-                st.text("Failed to capture video")
-                break
-            frame = detect_faces(frame)
-            stframe.image(frame, channels="BGR")
+    while st.session_state['run']:
+        # Read frame from the camera
+        ret, frame = cap.read()
+        if not ret:
+            st.write("Failed to grab frame")
+            break
 
+        # Convert the frame from BGR to RGB
+        rgb_frame = frame[:, :, ::-1]
+
+        # Find all the faces in the current frame
+        face_locations = face_recognition.face_locations(rgb_frame, model="cnn")
+
+        # Draw boxes around the faces
+        for top, right, bottom, left in face_locations:
+            cv2.rectangle(frame, (left, top), (right, bottom), (0, 255, 0), 2)
+            # Add label for face
+            cv2.putText(frame, "Face", (left, top - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.9, (0, 255, 0), 2)
+
+        # Display the frame with boxes around faces
+        video_placeholder.image(frame, channels="BGR")
+
+    # Release the video capture object
     cap.release()
+
+if st.session_state['run']:
+    run_video()
+else:
+    st.write("Video stopped")
