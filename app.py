@@ -164,6 +164,7 @@
 
 
 import streamlit as st
+import imageio
 import cv2
 import numpy as np
 
@@ -178,30 +179,25 @@ video_placeholder = st.empty()
 face_cascade = cv2.CascadeClassifier(cv2.data.haarcascades + 'haarcascade_frontalface_default.xml')
 
 # Function to capture video and perform face detection
-def capture_video(device_index=0):
-    cap = cv2.VideoCapture(device_index)
-    if not cap.isOpened():
-        st.error(f"Cannot open webcam with device index {device_index}")
-        return
-    while cap.isOpened():
-        ret, frame = cap.read()
-        if not ret:
-            break
-        # Convert to grayscale for face detection
-        gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
-        faces = face_cascade.detectMultiScale(gray, 1.1, 4)
-        # Draw green box around faces
-        for (x, y, w, h) in faces:
-            cv2.rectangle(frame, (x, y), (x + w, y + h), (0, 255, 0), 2)
-        # Display the resulting frame
-        video_placeholder.image(cv2.cvtColor(frame, cv2.COLOR_BGR2RGB))
+def capture_video():
+    reader = imageio.get_reader('<video0>')
+    try:
+        for frame in reader:
+            image = np.array(frame)
+            # Convert to grayscale for face detection
+            gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
+            faces = face_cascade.detectMultiScale(gray, 1.1, 4)
+            # Draw green box around faces
+            for (x, y, w, h) in faces:
+                cv2.rectangle(image, (x, y), (x + w, y + h), (0, 255, 0), 2)
+            # Display the resulting frame
+            video_placeholder.image(cv2.cvtColor(image, cv2.COLOR_BGR2RGB))
 
-        # Check for stop button
-        if st.session_state.get('stop', False):
-            break
-
-    cap.release()
-    video_placeholder.empty()
+            # Check for stop button
+            if st.session_state.get('stop', False):
+                break
+    except RuntimeError:
+        st.error("Webcam not accessible")
 
 # Initialize session state for stop button
 if 'stop' not in st.session_state:
@@ -210,10 +206,7 @@ if 'stop' not in st.session_state:
 # Start capturing video when 'Run' button is clicked
 if run:
     st.session_state['stop'] = False
-    # Try different device indices
-    for device_index in range(3):
-        st.write(f"Trying to open webcam with device index {device_index}")
-        capture_video(device_index)
+    capture_video()
 
 # Stop capturing video when 'Stop' button is clicked
 if stop:
