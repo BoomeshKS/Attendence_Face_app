@@ -164,50 +164,33 @@
 
 
 import streamlit as st
-import imageio
+from streamlit_webrtc import VideoTransformerBase, webrtc_streamer
+import av
 import cv2
 import numpy as np
 
 st.title("Live Video Face Detection")
 
-# Initialize variables
-run = st.button('Run')
-stop = st.button('Stop')
-video_placeholder = st.empty()
-
 # Load the pre-trained face detection model
 face_cascade = cv2.CascadeClassifier(cv2.data.haarcascades + 'haarcascade_frontalface_default.xml')
 
-# Function to capture video and perform face detection
-def capture_video():
-    reader = imageio.get_reader('<video0>')
-    try:
-        for frame in reader:
-            image = np.array(frame)
-            # Convert to grayscale for face detection
-            gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
-            faces = face_cascade.detectMultiScale(gray, 1.1, 4)
-            # Draw green box around faces
-            for (x, y, w, h) in faces:
-                cv2.rectangle(image, (x, y), (x + w, y + h), (0, 255, 0), 2)
-            # Display the resulting frame
-            video_placeholder.image(cv2.cvtColor(image, cv2.COLOR_BGR2RGB))
+class FaceDetectionTransformer(VideoTransformerBase):
+    def transform(self, frame):
+        img = frame.to_ndarray(format="bgr24")
 
-            # Check for stop button
-            if st.session_state.get('stop', False):
-                break
-    except RuntimeError:
-        st.error("Webcam not accessible")
+        gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
+        faces = face_cascade.detectMultiScale(gray, 1.1, 4)
+        for (x, y, w, h) in faces:
+            cv2.rectangle(img, (x, y), (x + w, y + h), (0, 255, 0), 2)
 
-# Initialize session state for stop button
-if 'stop' not in st.session_state:
-    st.session_state['stop'] = False
+        return av.VideoFrame.from_ndarray(img, format="bgr24")
 
-# Start capturing video when 'Run' button is clicked
-if run:
-    st.session_state['stop'] = False
-    capture_video()
+webrtc_ctx = webrtc_streamer(
+    key="face-detection",
+    video_transformer_factory=FaceDetectionTransformer,
+    media_stream_constraints={"video": True, "audio": False},
+)
 
-# Stop capturing video when 'Stop' button is clicked
-if stop:
-    st.session_state['stop'] = True
+if webrtc_ctx.video_transformer:
+    if st.button("Stop"):
+        webrtc_ctx.video_transformer = None
