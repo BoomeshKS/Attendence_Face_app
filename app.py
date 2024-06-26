@@ -164,7 +164,7 @@
 
 
 import streamlit as st
-from streamlit_webrtc import VideoTransformerBase, webrtc_streamer
+from streamlit_webrtc import webrtc_streamer, VideoProcessorBase
 import av
 import cv2
 import numpy as np
@@ -174,8 +174,11 @@ st.title("Live Video Face Detection")
 # Load the pre-trained face detection model
 face_cascade = cv2.CascadeClassifier(cv2.data.haarcascades + 'haarcascade_frontalface_default.xml')
 
-class FaceDetectionTransformer(VideoTransformerBase):
-    def transform(self, frame):
+class FaceDetectionProcessor(VideoProcessorBase):
+    def __init__(self):
+        super().__init__()
+
+    def recv(self, frame):
         img = frame.to_ndarray(format="bgr24")
 
         gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
@@ -187,10 +190,10 @@ class FaceDetectionTransformer(VideoTransformerBase):
 
 webrtc_ctx = webrtc_streamer(
     key="face-detection",
-    video_transformer_factory=FaceDetectionTransformer,
+    video_processor_factory=FaceDetectionProcessor,
     media_stream_constraints={"video": True, "audio": False},
 )
 
-if webrtc_ctx.video_transformer:
+if webrtc_ctx.video_processor:
     if st.button("Stop"):
-        webrtc_ctx.video_transformer = None
+        webrtc_ctx.video_processor = None
